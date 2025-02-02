@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gemini AI Response Analysis</title>
+  </head>
+  <body>
+    <h2>Gemini AI Query Response</h2>
+    <form id="queryForm" method="POST">
+      <input
+        type="text"
+        name="query"
+        placeholder="Enter your query"
+        id="queryInput"
+      />
+      <button type="submit">Analyze</button>
+    </form>
+
+    <h3 id="response"></h3>
+    <p><strong>Sentiment Score:</strong> <span id="sentiment"></span></p>
+
+    <script>
+      // Add an event listener to handle form submission
+      document
+        .getElementById("queryForm")
+        .addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const query = document.getElementById("queryInput").value;
+          const response = await fetch("http://127.0.0.1:8000/analyze", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ query }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            document.getElementById(
+              "response"
+            ).textContent = `AI Response: ${data.response}`;
+            document.getElementById("sentiment").textContent = data.sentiment;
+          } else {
+            document.getElementById(
+              "response"
+            ).textContent = `Error: ${data.message}`;
+            document.getElementById("sentiment").textContent = "";
+          }
+        });
+    </script>
+  </body>
+</html>
