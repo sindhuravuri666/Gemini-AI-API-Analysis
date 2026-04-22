@@ -1,36 +1,37 @@
+import os
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from textblob import TextBlob
-import requests
+from dotenv import load_dotenv
+import google.generativeai as genai
+
+load_dotenv()
 
 app = FastAPI()
 
-# AI response function (calls external AI API like Gemini or OpenAI)
+# Load Gemini API key from .env
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY is not set in the .env file")
+
+genai.configure(api_key=GEMINI_API_KEY)
+
+# Use a Gemini model
+model = genai.GenerativeModel("models/gemini-flash-latest")
+
+@app.get("/")
+async def root():
+    return {"message": "Gemini FastAPI server is running"}
+
 
 def get_ai_response(user_query: str):
-    # Example for OpenAI API (replace it with Gemini or other APIs)
-    api_key = "AIzaSyBTmqit2Oct0siWKTlMRM137Mev7_aSAwk"  # Replace with your actual API key
-    url = "https://api.openai.com/v1/completions"
-    
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-    
-    data = {
-        "model": "gpt-3.5-turbo",
-        "prompt": user_query,
-        "max_tokens": 100,
-        "temperature": 0.7
-    }
+    try:
+        response = model.generate_content(user_query)
+        return response.text.strip()
+    except Exception as e:
+        return f"Failed to connect to AI server: {str(e)}"
 
-    response = requests.post(url, headers=headers, json=data)
-    
-    if response.status_code == 200:
-        response_data = response.json()
-        return response_data['choices'][0]['text'].strip()
-    else:
-        return "Failed to connect to AI server."
 
 @app.post("/get_ai_response")
 async def ai_response(request: Request):
@@ -42,11 +43,10 @@ async def ai_response(request: Request):
 
     ai_response = get_ai_response(user_query)
 
-    if ai_response == "Failed to connect to AI server.":
+    if ai_response.startswith("Failed to connect to AI server:"):
         return JSONResponse(content={"message": ai_response}, status_code=500)
 
     return JSONResponse(content={"response": ai_response})
-
 
 
 @app.post("/analyze")
@@ -59,7 +59,7 @@ async def analyze_query(request: Request):
 
     ai_response = get_ai_response(user_query)
 
-    if ai_response == "Failed to connect to AI server.":
+    if ai_response.startswith("Failed to connect to AI server:"):
         return JSONResponse(content={"message": ai_response}, status_code=500)
 
     sentiment_score = TextBlob(ai_response).sentiment.polarity
@@ -69,4 +69,3 @@ async def analyze_query(request: Request):
         "response": ai_response,
         "sentiment": sentiment_score
     })
-    
